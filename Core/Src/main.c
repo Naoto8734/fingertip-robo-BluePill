@@ -101,18 +101,37 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 
   while (1)
   {
 	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,50);
-	  HAL_Delay(1000);
-	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+	  // MOTOR 2
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,50);
+	  // MOTOR 3
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,50);
+	  // MOTOR 1
 	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
 	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,50);
+	  HAL_Delay(1000);
+
+	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+	  // MOTOR 2
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,50);
+	  // MOTOR 3
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
+	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,50);
+	  // MOTOR 1
+	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
+	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,50);
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -213,11 +232,11 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 72-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 65535;
+  htim2.Init.Period = 100-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
