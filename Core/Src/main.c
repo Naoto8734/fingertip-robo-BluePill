@@ -110,29 +110,29 @@ int main(void)
 
   while (1)
   {
-	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-	  // MOTOR 2
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,50);
-	  // MOTOR 3
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,50);
-	  // MOTOR 1
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,50);
-	  HAL_Delay(1000);
-
-	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-	  // MOTOR 2
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,50);
-	  // MOTOR 3
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
-	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,50);
-	  // MOTOR 1
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,50);
-	  HAL_Delay(1000);
+//	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+//	  // MOTOR 2
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,50);
+//	  // MOTOR 3
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,50);
+//	  // MOTOR 1
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,50);
+//	  HAL_Delay(1000);
+//
+//	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+//	  // MOTOR 2
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,50);
+//	  // MOTOR 3
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,50);
+//	  // MOTOR 1
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,50);
+//	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -390,6 +390,30 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	switch (GPIO_Pin) {
+		case ENCODER_1A_Pin:
+			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		case ENCODER_1B_Pin:
+			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		case ENCODER_2A_Pin:
+//			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		case ENCODER_2B_Pin:
+//			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		case ENCODER_3A_Pin:
+//			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		case ENCODER_3B_Pin:
+//			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		default:
+			break;
+	}
+}
 /* USER CODE END 4 */
 
 /**
