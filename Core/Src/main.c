@@ -32,6 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ENCODER_PPR 11
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +47,9 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-
+volatile uint8_t enc1_state;
+volatile uint8_t pre_enc1_state;
+volatile int32_t enc1_count;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,7 +59,7 @@ static void MX_I2C1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
-
+void enc1count(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -108,30 +111,45 @@ int main(void)
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 
+  enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin) + 2*HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
+  enc1count();
+  HAL_Delay(10);
+  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
+  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,40);
   while (1)
   {
+	  if(enc1_count>ENCODER_PPR*4*577){
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,40);
+	  }else if(enc1_count<ENCODER_PPR*4*577){
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,40);
+	  }if(enc1_count == ENCODER_PPR*4*577){
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
+		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
+	  }
 //	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
 //	  // MOTOR 2
 //	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,50);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,5);
 //	  // MOTOR 3
 //	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,50);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,5);
 //	  // MOTOR 1
 //	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,50);
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,5);
 //	  HAL_Delay(1000);
 //
 //	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
 //	  // MOTOR 2
 //	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,50);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,5);
 //	  // MOTOR 3
 //	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,50);
+//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,5);
 //	  // MOTOR 1
 //	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,50);
+//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,5);
 //	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -393,11 +411,10 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	switch (GPIO_Pin) {
 		case ENCODER_1A_Pin:
-			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			enc1count();
 			break;
 		case ENCODER_1B_Pin:
-			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-			break;
+			enc1count();
 		case ENCODER_2A_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
 			break;
@@ -409,6 +426,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			break;
 		case ENCODER_3B_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			break;
+		default:
+			break;
+	}
+}
+
+void enc1count(void){
+	pre_enc1_state = enc1_state;
+	enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin) + 2*HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
+	switch (enc1_state) {
+		case 0:
+			if(pre_enc1_state==1)enc1_count--;
+			if(pre_enc1_state==2)enc1_count++;
+			break;
+		case 1:
+			if(pre_enc1_state==3)enc1_count--;
+			if(pre_enc1_state==0)enc1_count++;
+			break;
+		case 2:
+			if(pre_enc1_state==0)enc1_count--;
+			if(pre_enc1_state==3)enc1_count++;
+			break;
+		case 3:
+			if(pre_enc1_state==2)enc1_count--;
+			if(pre_enc1_state==1)enc1_count++;
 			break;
 		default:
 			break;
