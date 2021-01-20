@@ -54,6 +54,11 @@ OSはUbuntu。[J-Link EDU](https://www.embitek.co.jp/product/jlink-edu.html)を�
 > 最大20 kHzのPWM周波数（出力周波数は入力周波数と同じ）
 > 逆極性保護
 
+## I2C Slave
+- Slaveのアドレスを、`0x34`とする。
+- レジスタアドレス：`0x68` (WHO_AM_I)
+ - 自身のSlaveアドレス`0x34`を返す
+
 ## C++に対応させる方法
 参考：[How to Use C++ with STM32CubeIDE - Shawn Hymel](https://shawnhymel.com/1941/how-to-use-c-with-stm32cubeide/)
 

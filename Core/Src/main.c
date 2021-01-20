@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -33,6 +33,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define ENCODER_PPR 11
+#define I2C_SLAVE_ADDR 0x34
+#define WHO_AM_I_REGISTER 0x75
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,9 +49,9 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-volatile uint8_t enc1_state;
-volatile uint8_t pre_enc1_state;
+volatile uint8_t enc1_state, pre_enc1_state;
 volatile int32_t enc1_count;
+volatile uint8_t i2c_trans_req, i2c_trans_dir;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,57 +106,66 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
-  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 
-  enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin) + 2*HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
-  enc1count();
-  HAL_Delay(10);
-  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,40);
-  while (1)
-  {
-	  if(enc1_count>ENCODER_PPR*4*577){
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,40);
-	  }else if(enc1_count<ENCODER_PPR*4*577){
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,40);
-	  }if(enc1_count == ENCODER_PPR*4*577){
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-		  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-	  }
-//	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-//	  // MOTOR 2
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,5);
-//	  // MOTOR 3
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,5);
-//	  // MOTOR 1
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,0);
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,5);
-//	  HAL_Delay(1000);
-//
-//	  HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-//	  // MOTOR 2
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,5);
-//	  // MOTOR 3
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
-//	  __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,5);
-//	  // MOTOR 1
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,0);
-//	  __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,5);
-//	  HAL_Delay(1000);
+	enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin)
+			+ 2 * HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
+	enc1count();
+	HAL_Delay(10);
+
+//	HAL_I2C_EnableListen_IT(&hi2c1);
+	uint8_t i2cBuf[2] = {0};
+	uint32_t delay_val = 1000;
+
+//	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+//	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 100);
+	HAL_Delay(600);
+	while (1) {
+		if (HAL_I2C_Slave_Receive(&hi2c1, i2cBuf, 1, 1000) == HAL_OK) {
+			if (i2cBuf[0] == WHO_AM_I_REGISTER) {
+				delay_val = 100;
+				i2cBuf[0] = I2C_SLAVE_ADDR;
+			}else if(i2cBuf[0] == 0x33){
+				delay_val = 1000;
+				i2cBuf[0] = 0x88;
+			} else {
+				delay_val = 2000;
+			}
+			HAL_I2C_Slave_Transmit(&hi2c1, i2cBuf, 1, 50);
+			while(!(HAL_I2C_GetState(&hi2c1)==HAL_I2C_STATE_READY));
+//			if (enc1_count > ENCODER_PPR * 4 * 577) {
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 100);
+//			} else if (enc1_count < ENCODER_PPR * 4 * 577) {
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 100);
+//			}
+//			if (enc1_count == ENCODER_PPR * 4 * 577) {
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+//				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+//			}
+
+		}else{
+			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
+			HAL_Delay(delay_val);
+		}
+//		i2c_trans_req = 0;
+//		if(i2c_trans_dir == 0x01){
+//			HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, &i2cBuf, 1, I2C_FIRST_FRAME);
+//			while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_LISTEN);
+
+//			HAL_I2C_Slave_Sequential_Transmit_IT(&hi2c1, &i2cBuf, 1, I2C_LAST_FRAME);
+//		   while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY);
+//		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -214,12 +225,12 @@ static void MX_I2C1_Init(void)
   hi2c1.Instance = I2C1;
   hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.OwnAddress1 = 52;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_ENABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     Error_Handler();
@@ -407,53 +418,78 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+//void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection,
+//		uint16_t AddrMatchCode) {
+//	//i2c受信時の割り込み
+//	if (hi2c->Instance == I2C1) {
+//		if (AddrMatchCode == I2C_SLAVE_ADDR) {
+//			i2c_trans_req = 1;
+//			i2c_trans_dir = TransferDirection;
+//		}
+//	}
+//}
+//
+//void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
+//	if (hi2c->Instance == I2C1) {
+//		HAL_I2C_EnableListen_IT(&hi2c1);
+//	}
+//}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	//エンコーダ用の割り込みの有効化
 	switch (GPIO_Pin) {
-		case ENCODER_1A_Pin:
-			enc1count();
-			break;
-		case ENCODER_1B_Pin:
-			enc1count();
-		case ENCODER_2A_Pin:
+	case ENCODER_1A_Pin:
+		enc1count();
+		break;
+	case ENCODER_1B_Pin:
+		enc1count();
+	case ENCODER_2A_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-			break;
-		case ENCODER_2B_Pin:
+		break;
+	case ENCODER_2B_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-			break;
-		case ENCODER_3A_Pin:
+		break;
+	case ENCODER_3A_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-			break;
-		case ENCODER_3B_Pin:
+		break;
+	case ENCODER_3B_Pin:
 //			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-			break;
-		default:
-			break;
+		break;
+	default:
+		break;
 	}
 }
 
-void enc1count(void){
+void enc1count(void) {
 	pre_enc1_state = enc1_state;
-	enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin) + 2*HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
+	enc1_state = HAL_GPIO_ReadPin(ENCODER_1A_GPIO_Port, ENCODER_1A_Pin)
+			+ 2 * HAL_GPIO_ReadPin(ENCODER_1B_GPIO_Port, ENCODER_1B_Pin);
 	switch (enc1_state) {
-		case 0:
-			if(pre_enc1_state==1)enc1_count--;
-			if(pre_enc1_state==2)enc1_count++;
-			break;
-		case 1:
-			if(pre_enc1_state==3)enc1_count--;
-			if(pre_enc1_state==0)enc1_count++;
-			break;
-		case 2:
-			if(pre_enc1_state==0)enc1_count--;
-			if(pre_enc1_state==3)enc1_count++;
-			break;
-		case 3:
-			if(pre_enc1_state==2)enc1_count--;
-			if(pre_enc1_state==1)enc1_count++;
-			break;
-		default:
-			break;
+	case 0:
+		if (pre_enc1_state == 1)
+			enc1_count--;
+		if (pre_enc1_state == 2)
+			enc1_count++;
+		break;
+	case 1:
+		if (pre_enc1_state == 3)
+			enc1_count--;
+		if (pre_enc1_state == 0)
+			enc1_count++;
+		break;
+	case 2:
+		if (pre_enc1_state == 0)
+			enc1_count--;
+		if (pre_enc1_state == 3)
+			enc1_count++;
+		break;
+	case 3:
+		if (pre_enc1_state == 2)
+			enc1_count--;
+		if (pre_enc1_state == 1)
+			enc1_count++;
+		break;
+	default:
+		break;
 	}
 }
 /* USER CODE END 4 */
@@ -465,11 +501,10 @@ void enc1count(void){
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
