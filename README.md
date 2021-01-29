@@ -1,5 +1,8 @@
 # fingertip-robo-BluePill
-STM32F103(BluePill)用の、、STM32CubeIDEのワークスペース。
+STM32F103(BluePill)用の、STM32CubeIDEのワークスペース。
+マイコンのピン配置は次の通り。
+
+![pinmap](fingertip-robo-pinmap.png)
 
 ### グリッパーロボ用のリポジトリ一覧
 
@@ -15,7 +18,7 @@ OSはUbuntu。[J-Link EDU](https://www.embitek.co.jp/product/jlink-edu.html)を�
 ### BluePillとJ-Link EDUとのピン接続
 
 | SWD(JLink) | Pin# | | BluePill |
- ---- | ---- | ---- | ---- | ---- 
+| ---- | ---- | ---- | ---- |
 | VTref | 1 | |3V3(SWD-Connector) |
 | GND | 4 | | GND(SWD-Connector) |
 | SWDIO | 7 | | DIO(SWD-Connector) |
@@ -56,7 +59,7 @@ OSはUbuntu。[J-Link EDU](https://www.embitek.co.jp/product/jlink-edu.html)を�
 
 ## I2C Slave
 - Slaveのアドレスを、`0x34`とする。
-- レジスタアドレス：`0x68` (WHO_AM_I)
+- レジスタアドレス：`0x75` (WHO_AM_I)
  - 自身のSlaveアドレス`0x34`を返す
 
 ## C++に対応させる方法
