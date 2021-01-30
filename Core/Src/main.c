@@ -38,9 +38,10 @@ typedef struct __enc_values{
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define ENCODER_PPR 11
-#define I2C_SLAVE_ADDR 0x34
-#define WHO_AM_I_REGISTER 0x75
-#define MOTOR_PWM_SPEED 40
+#define ENCODER_1ROTATION_PPR ENCODER_PPR*4*577 //577回転すると、出力軸が1回転
+#define ENCODER_HALF_ROTATION_PPR ENCODER_PPR*2*577
+#define MOTOR_PWM_HIGH_SPEED 60
+#define MOTOR_PWM_LOW_SPEED 20
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,7 +57,6 @@ TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 volatile enc_values enc1, enc2, enc3;
-volatile uint8_t isRecieved;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,72 +139,87 @@ int main(void)
 			+ 2 * HAL_GPIO_ReadPin(ENCODER_3B_GPIO_Port, ENCODER_3B_Pin);
 	enc3.count = 0;
 
-	//i2cのバッファは、uint8_tでデータ数＋１のサイズが望ましい。
-	uint8_t txBuf[3] = { 0 };
-	uint8_t rxBuf[3] = { 0 };
-	isRecieved = 0;
-	HAL_Delay(600);
+	uint8_t state =0;
+	int32_t c_val = 0;
 	while (1) {
-		HAL_I2C_Slave_Receive_IT(&hi2c1, (uint8_t *)rxBuf, 1);
-		while (!isRecieved) {
+		HAL_GPIO_WritePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin, GPIO_PIN_SET);
+		while(1){
+			HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
+			HAL_Delay(200);
+			if (HAL_GPIO_ReadPin(SW_B_GPIO_Port, SW_B_Pin) == GPIO_PIN_RESET){
+				c_val = ENCODER_HALF_ROTATION_PPR;
+				break;
+			}
+			if (HAL_GPIO_ReadPin(SW_W_GPIO_Port, SW_W_Pin) == GPIO_PIN_RESET){
+				c_val = ENCODER_1ROTATION_PPR;
+				break;
+			}
+		}
+		HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
+
+		uint8_t motor1OK = 0, motor2OK = 0, motor3OK = 0;
+		HAL_GPIO_WritePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin, GPIO_PIN_RESET);
+
+		while(motor1OK+motor2OK+motor3OK != 3){
 			//motor1 pid
-			if (enc1.count > ENCODER_PPR * 4 * 577) {
+			if (enc1.count > c_val) {
+				motor1OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
-				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, MOTOR_PWM_SPEED);
-			} else if (enc1.count < ENCODER_PPR * 4 * 577) {
+				if(enc1.count >= c_val + (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, MOTOR_PWM_LOW_SPEED);
+			} else if (enc1.count < c_val) {
+				motor1OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, MOTOR_PWM_SPEED);
-			}else if (enc1.count == ENCODER_PPR * 4 * 577) {
+				if(enc1.count <= c_val - (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, MOTOR_PWM_LOW_SPEED);
+			}else if (enc1.count == c_val) {
+				motor1OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
 				__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+				motor1OK = 1;
 			}
 
 			//motor2 pid
-			if (enc2.count > ENCODER_PPR * 4 * 577) {
+			if (enc2.count > c_val) {
+				motor2OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, MOTOR_PWM_SPEED);
-			} else if (enc2.count < ENCODER_PPR * 4 * 577) {
+				if(enc2.count >= c_val + (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, MOTOR_PWM_LOW_SPEED);
+			} else if (enc2.count < c_val) {
+				motor2OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, MOTOR_PWM_SPEED);
-			}else if (enc2.count == ENCODER_PPR * 4 * 577) {
+				if(enc2.count <= c_val - (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, MOTOR_PWM_LOW_SPEED);
+			}else if (enc2.count == c_val) {
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+				motor2OK = 1;
 			}
 
 			//motor3 pid
-			if (enc3.count > ENCODER_PPR * 4 * 577) {
+			if (enc3.count > c_val) {
+				motor3OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
-				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, MOTOR_PWM_SPEED);
-			} else if (enc3.count < ENCODER_PPR * 4 * 577) {
+				if(enc3.count >= c_val + (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, MOTOR_PWM_LOW_SPEED);
+			} else if (enc3.count < ENCODER_HALF_ROTATION_PPR) {
+				motor3OK = 0;
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, MOTOR_PWM_SPEED);
-			}else if (enc3.count == ENCODER_PPR * 4 * 577) {
+				if(enc3.count <= c_val - (ENCODER_PPR*8)) __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, MOTOR_PWM_HIGH_SPEED);
+				else __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, MOTOR_PWM_LOW_SPEED);
+			}else if (enc3.count == c_val) {
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
 				__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+				motor3OK = 1;
 			}
-//
-//			HAL_GPIO_TogglePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin);
-//			HAL_Delay(50);
-		}
-		__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
-		__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
-		isRecieved = 0;
-		switch (rxBuf[0]) {
-		case WHO_AM_I_REGISTER:
-			txBuf[0] = I2C_SLAVE_ADDR;
-			break;
-		default:
-			txBuf[0] = 0xFF;
-			break;
-		}
-		while(HAL_I2C_GetState(&hi2c1)!=HAL_I2C_STATE_READY);
-		HAL_I2C_Slave_Transmit(&hi2c1, (uint8_t*) txBuf, 1, 100);
-		isRecieved = 0;
 
+			HAL_Delay(1);
+		}
+		enc1.count = 0;
+		enc2.count = 0;
+		enc3.count = 0;
+		c_val = 0;
+		HAL_GPIO_WritePin(LED_BUILTIN_GPIO_Port, LED_BUILTIN_Pin, GPIO_PIN_SET);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -461,7 +476,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : ENCODER_2B_Pin ENCODER_3B_Pin ENCODER_3A_Pin */
   GPIO_InitStruct.Pin = ENCODER_2B_Pin|ENCODER_3B_Pin|ENCODER_3A_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -475,10 +490,13 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : SW_W_Pin SW_B_Pin */
   GPIO_InitStruct.Pin = SW_W_Pin|SW_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
@@ -488,11 +506,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c){
-	isRecieved = 1;
-	UNUSED(hi2c);
-}
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	//エンコーダ用の割り込みの有効化
 	switch (GPIO_Pin) {

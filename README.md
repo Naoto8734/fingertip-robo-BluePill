@@ -1,5 +1,9 @@
 # fingertip-robo-BluePill
 STM32F103(BluePill)用の、STM32CubeIDEのワークスペース。
+
+LED_Rは、ピンがHIGHで点灯。
+BluePill組み込みのLEDとは逆なので注意。
+SW_BとSW_Wは、プルアップするので常時HIGH。押したときだけLOW。
 マイコンのピン配置は次の通り。
 
 ![pinmap](fingertip-robo-pinmap.png)
@@ -56,11 +60,6 @@ OSはUbuntu。[J-Link EDU](https://www.embitek.co.jp/product/jlink-edu.html)を�
 > 1.8 V、3.3 V、5 V、12 Vロジック（Arduino、Raspberry Pi、PLCなど）と互換性のある入力
 > 最大20 kHzのPWM周波数（出力周波数は入力周波数と同じ）
 > 逆極性保護
-
-## I2C Slave
-- Slaveのアドレスを、`0x34`とする。
-- レジスタアドレス：`0x75` (WHO_AM_I)
- - 自身のSlaveアドレス`0x34`を返す
 
 ## C++に対応させる方法
 参考：[How to Use C++ with STM32CubeIDE - Shawn Hymel](https://shawnhymel.com/1941/how-to-use-c-with-stm32cubeide/)
